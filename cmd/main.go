@@ -29,8 +29,6 @@ var (
 
 // Run function to start the exporter
 func Run() {
-	zerolog.TimeFieldFormat = zerolog.TimeFormatUnixNano
-
 	kingpin.Parse()
 	log.Info().Msg("Prusa exporter starting")
 
@@ -66,19 +64,20 @@ func Run() {
 
 	log.Info().Msg("Syslog server starting at: " + *syslogListenAddress)
 	go lineprotocol.MetricsListener(*syslogListenAddress, *lineprotocolPrefix)
-	log.Info().Msg("Syslog server started")
+	log.Info().Msg("Syslog server ready to receive metrics")
 
 	// registering the prometheus metrics
 
 	prometheus.MustRegister(collectors...)
 	log.Info().Msg("Metrics registered")
 	http.Handle(*metricsPath, promhttp.Handler())
-	log.Info().Msg("Listening at port: " + strconv.Itoa(*metricsPort))
+	log.Info().Msg("PrusaLink metrics initialized")
 
-	log.Info().Msg("line_protocol metrics initialized")
 	http.Handle(*lineProtocolMetricsPath, promhttp.HandlerFor(lineProtocolRegistry, promhttp.HandlerOpts{
 		Registry: lineProtocolRegistry,
 	}))
+	log.Info().Msg("line_protocol metrics initialized")
+
 	log.Info().Msg("Listening at port: " + strconv.Itoa(*metricsPort))
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -87,8 +86,8 @@ func Run() {
     <body>
     <h1>prusa_exporter</h1>
 	<p>Syslog server running at - <b>` + *syslogListenAddress + `</b></p>
-    <p><a href="` + *metricsPath + `">Metrics</a></p>
-	<p><a href="` + *lineProtocolMetricsPath + `">Metrics</a></p>
+    <p><a href="` + *metricsPath + `">PrusaLink metrics</a></p>
+	<p><a href="` + *lineProtocolMetricsPath + `">Line Protocol (UDP) Metrics</a></p>
 	</body>
     </html>`))
 	})
