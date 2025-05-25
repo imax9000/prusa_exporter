@@ -14,17 +14,16 @@ type point struct {
 	Measurement string
 	Tags        map[string]string
 	Fields      map[string]interface{} // Use interface{} to handle different field types
-	Timestamp   time.Time
 }
 
 func process(data format.LogParts, received time.Time, prefix string) {
-	mac, ip, timestamp, err := processTimestamp(data, received)
+	mac, ip, err := processTimestamp(data, received)
 	if err != nil {
 		log.Error().Msg(fmt.Sprintf("Error processing timestamp: %v", err))
 		return
 	}
-	log.Debug().Msg(fmt.Sprintf("Processing data for printer %s with timestamp %d", mac, timestamp))
-	metrics, err := processMessage(data["message"].(string), timestamp, mac, prefix, ip)
+	log.Debug().Msg(fmt.Sprintf("Processing data for printer %s", mac))
+	metrics, err := processMessage(data["message"].(string), mac, prefix, ip)
 	if err != nil {
 		log.Error().Msg(fmt.Sprintf("Error processing message: %v", err))
 		return
@@ -48,21 +47,21 @@ func process(data format.LogParts, received time.Time, prefix string) {
 
 // processTimestamp returns the MAC address and timestamp from the ingested data
 // it is basically used for the synchronization of time between handler and the printer
-func processTimestamp(data format.LogParts, received time.Time) (string, string, int64, error) {
+func processTimestamp(data format.LogParts, received time.Time) (string, string, error) {
 	mac, ok := data["hostname"].(string)
 	if !ok {
-		return "", "", 0, fmt.Errorf("mac is not an string")
+		return "", "", fmt.Errorf("mac is not an string")
 	}
 
 	ip, ok := data["client"].(string)
 	if !ok {
-		return "", "", 0, fmt.Errorf("ip is not an string")
+		return "", "", fmt.Errorf("ip is not an string")
 	}
 
-	return mac, ip, received.UnixNano(), nil
+	return mac, ip, nil
 }
 
-func processMessage(message string, timestamp int64, mac string, prefix string, ip string) ([]string, error) {
+func processMessage(message string, mac string, prefix string, ip string) ([]string, error) {
 	messageSplit := strings.Split(message, "\n")
 
 	if len(messageSplit) == 0 {
@@ -79,13 +78,6 @@ func processMessage(message string, timestamp int64, mac string, prefix string, 
 
 	for i, line := range messageSplit {
 		splitted := strings.Split(line, " ")
-		delta, err := strconv.ParseInt(splitted[len(splitted)-1], 10, 64)
-		if err != nil {
-			log.Error().Msg("Expected error while parsing time delta for metric: " + splitted[0] + " error:" + err.Error())
-			continue
-		}
-		splitted[len(splitted)-1] = strconv.FormatInt(timestamp+delta, 10)
-		log.Trace().Msg("Processing timestamps for " + message)
 		splitted, err = updateMetric(splitted, prefix, mac, ip)
 		if err != nil {
 			log.Error().Msg("Expected error while adding mac label for metric: " + splitted[0] + " error:" + err.Error())
