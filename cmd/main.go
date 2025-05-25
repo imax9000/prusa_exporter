@@ -73,6 +73,8 @@ func Run() {
 	http.Handle(*metricsPath, promhttp.Handler())
 	log.Info().Msg("PrusaLink metrics initialized")
 
+	lineprotocol.Init(lineProtocolRegistry)
+
 	http.Handle(*lineProtocolMetricsPath, promhttp.HandlerFor(lineProtocolRegistry, promhttp.HandlerOpts{
 		Registry: lineProtocolRegistry,
 	}))

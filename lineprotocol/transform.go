@@ -30,6 +30,8 @@ func process(data format.LogParts, received time.Time, prefix string) {
 		return
 	}
 
+	up.WithLabelValues(strings.Split(ip, ":")[0], mac).Set(1) // Set the up metric to 1 for the printer
+
 	for _, line := range metrics {
 		point, err := parseLineProtocol(line)
 		if err != nil {
