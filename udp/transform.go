@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/rs/zerolog/log"
 	"gopkg.in/mcuadros/go-syslog.v2/format"
@@ -16,10 +15,10 @@ type point struct {
 	Fields      map[string]interface{} // Use interface{} to handle different field types
 }
 
-func process(data format.LogParts, received time.Time, prefix string) {
-	mac, ip, err := processTimestamp(data, received)
+func process(data format.LogParts, prefix string) {
+	mac, ip, err := processIdentifiers(data)
 	if err != nil {
-		log.Error().Msg(fmt.Sprintf("Error processing timestamp: %v", err))
+		log.Error().Msg(fmt.Sprintf("Error processing identifiers: %v", err))
 		return
 	}
 	log.Debug().Msg(fmt.Sprintf("Processing data for printer %s", mac))
@@ -29,7 +28,7 @@ func process(data format.LogParts, received time.Time, prefix string) {
 		return
 	}
 
-	up.WithLabelValues(strings.Split(ip, ":")[0], mac).Set(1) // Set the up metric to 1 for the printer
+	up.WithLabelValues(strings.Split(ip, ":")[0]).Set(1) // Set the up metric to 1 for the printer
 
 	for _, line := range metrics {
 		point, err := parseLineProtocol(line)
@@ -45,9 +44,8 @@ func process(data format.LogParts, received time.Time, prefix string) {
 	}
 }
 
-// processTimestamp returns the MAC address and timestamp from the ingested data
-// it is basically used for the synchronization of time between handler and the printer
-func processTimestamp(data format.LogParts, received time.Time) (string, string, error) {
+// processIdentifiers returns the MAC address and ip from the ingested data
+func processIdentifiers(data format.LogParts) (string, string, error) {
 	mac, ok := data["hostname"].(string)
 	if !ok {
 		return "", "", fmt.Errorf("mac is not an string")
