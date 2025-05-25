@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/rs/zerolog/log"
 	"gopkg.in/mcuadros/go-syslog.v2/format"
@@ -21,15 +22,14 @@ func process(data format.LogParts, prefix string) {
 		log.Error().Msg(fmt.Sprintf("Error processing identifiers: %v", err))
 		return
 	}
+	lastPush.WithLabelValues(mac, strings.Split(ip, ":")[0]).Set(float64(time.Now().Unix())) // Set the last push timestamp
+
 	log.Debug().Msg(fmt.Sprintf("Processing data for printer %s", mac))
 	metrics, err := processMessage(data["message"].(string), mac, prefix, ip)
 	if err != nil {
 		log.Error().Msg(fmt.Sprintf("Error processing message: %v", err))
 		return
 	}
-
-	//up.WithLabelValues(strings.Split(ip, ":")[0], mac).Set(1) // Set the up metric to 1 for the printer
-	//lastPush.WithLabelValues(strings.Split(ip, ":")[0], mac).Set(float64(time.Now().Unix())) // Set the last push timestamp
 
 	for _, line := range metrics {
 		point, err := parseLineProtocol(line)
@@ -39,6 +39,7 @@ func process(data format.LogParts, prefix string) {
 		}
 
 		registerMetric(*point) // Register the metric with the udp registry
+
 	}
 }
 
