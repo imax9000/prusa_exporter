@@ -16,14 +16,15 @@ import (
 )
 
 var (
-	configFile             = kingpin.Flag("config.file", "Configuration file for prusa_exporter.").Default("./prusa.yml").ExistingFile()
-	metricsPath            = kingpin.Flag("exporter.metrics-path", "Path where to expose metrics.").Default("/metrics").String()
-	metricsPort            = kingpin.Flag("exporter.metrics-port", "Port where to expose metrics.").Default("10009").Int()
-	prusaLinkScrapeTimeout = kingpin.Flag("prusalink.scrape-timeout", "Timeout in seconds to scrape prusalink metrics.").Default("10").Int()
-	logLevel               = kingpin.Flag("log.level", "Log level for zerolog.").Default("info").String()
-	syslogListenAddress    = kingpin.Flag("listen-address", "Address where to expose port for gathering metrics. - format <address>:<port>").Default("0.0.0.0:8514").String()
-	lineprotocolPrefix     = kingpin.Flag("prefix", "Prefix for lineprotocol metrics").Default("prusa_").String()
-	lineProtocolRegistry   = prometheus.NewRegistry()
+	configFile              = kingpin.Flag("config.file", "Configuration file for prusa_exporter.").Default("./prusa.yml").ExistingFile()
+	metricsPath             = kingpin.Flag("exporter.metrics-path", "Path where to expose Prusa Link metrics.").Default("/metrics/prusalink").String()
+	lineProtocolMetricsPath = kingpin.Flag("exporter.line-protocol-metrics-path", "Path where to expose lineprotocol metrics.").Default("/metrics/lineprotocol").String()
+	metricsPort             = kingpin.Flag("exporter.metrics-port", "Port where to expose metrics.").Default("10009").Int()
+	prusaLinkScrapeTimeout  = kingpin.Flag("prusalink.scrape-timeout", "Timeout in seconds to scrape prusalink metrics.").Default("10").Int()
+	logLevel                = kingpin.Flag("log.level", "Log level for zerolog.").Default("info").String()
+	syslogListenAddress     = kingpin.Flag("listen-address", "Address where to expose port for gathering metrics. - format <address>:<port>").Default("0.0.0.0:8514").String()
+	lineprotocolPrefix      = kingpin.Flag("prefix", "Prefix for lineprotocol metrics").Default("prusa_").String()
+	lineProtocolRegistry    = prometheus.NewRegistry()
 )
 
 // Run function to start the exporter
@@ -32,12 +33,21 @@ func Run() {
 
 	kingpin.Parse()
 	log.Info().Msg("Prusa exporter starting")
+
+	if *lineProtocolMetricsPath == *metricsPath {
+		log.Panic().Msg("line_protocol_metrics_path must be different from metrics_path")
+	}
+
+	if _, err := os.Stat(*configFile); os.IsNotExist(err) {
+		log.Panic().Msg("Configuration file does not exist: " + *configFile)
+	}
+
 	log.Info().Msg("Loading configuration file: " + *configFile)
 
 	config, err := config.LoadConfig(*configFile, *prusaLinkScrapeTimeout)
+
 	if err != nil {
-		log.Error().Msg("Error loading configuration file " + err.Error())
-		os.Exit(1)
+		log.Panic().Msg("Error loading configuration file " + err.Error())
 	}
 
 	logLevel, err := zerolog.ParseLevel(*logLevel)
@@ -66,7 +76,9 @@ func Run() {
 	log.Info().Msg("Listening at port: " + strconv.Itoa(*metricsPort))
 
 	log.Info().Msg("line_protocol metrics initialized")
-
+	http.Handle(*lineProtocolMetricsPath, promhttp.HandlerFor(lineProtocolRegistry, promhttp.HandlerOpts{
+		Registry: lineProtocolRegistry,
+	}))
 	log.Info().Msg("Listening at port: " + strconv.Itoa(*metricsPort))
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -76,6 +88,7 @@ func Run() {
     <h1>prusa_exporter</h1>
 	<p>Syslog server running at - <b>` + *syslogListenAddress + `</b></p>
     <p><a href="` + *metricsPath + `">Metrics</a></p>
+	<p><a href="` + *lineProtocolMetricsPath + `">Metrics</a></p>
 	</body>
     </html>`))
 	})
