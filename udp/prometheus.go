@@ -7,10 +7,10 @@ import (
 )
 
 var (
-	up = prometheus.NewGaugeVec(
+	lastPush = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
-			Name: "prusa_up",
-			Help: "Returns if printer is online.",
+			Name: "prusa_last_push_timestamp",
+			Help: "Last time the printer pushed metrics to the exporter.",
 		},
 		[]string{"ip", "mac"},
 	)
@@ -22,5 +22,5 @@ func Init(udpRegistry *prometheus.Registry) {
 		log.Panic("UDP Registry cannot be nil")
 	}
 
-	udpRegistry.MustRegister(up)
+	udpRegistry.MustRegister(lastPush)
 }
