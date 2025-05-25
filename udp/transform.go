@@ -126,7 +126,7 @@ func parseLineProtocol(line string) (*point, error) {
 
 	parts := strings.Split(line, " ")
 	if len(parts) < 2 || len(parts) > 3 {
-		return nil, fmt.Errorf("invalid line protocol format: %s", line) // this happens when printer sends error message
+		return nil, fmt.Errorf("invalid udp format: %s", line) // this happens when printer sends error message
 	}
 
 	measurementTags := parts[0]

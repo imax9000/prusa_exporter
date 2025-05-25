@@ -7,9 +7,9 @@
 
 # prusa_exporter
 
-Prusa Exporter or more known as prusa_exporter is a tool that allows users to expose metrics from the Prusa Research 3D printers. Its approach is to scrape metrics from [Prusa Link](https://help.prusa3d.com/article/prusa-connect-and-prusalink-explained_302608) REST API and also from [line_protocol](https://github.com/prusa3d/Prusa-Firmware-Buddy/blob/master/doc/metrics.md) type of metrics. After gettng data it's simply exposes the metrics at `/metrics` endpoint.
+Prusa Exporter or more known as prusa_exporter is a tool that allows users to expose metrics from the Prusa Research 3D printers. Its approach is to scrape metrics from [Prusa Link](https://help.prusa3d.com/article/prusa-connect-and-prusalink-explained_302608) REST API and also from [UDP](https://github.com/prusa3d/Prusa-Firmware-Buddy/blob/master/doc/metrics.md) type of metrics. After gettng data it's simply exposes the metrics at `/metrics` endpoint.
 
-**line_protocol** is configured in printer - Settings -> Network -> Metrics & Log
+**UDP** is configured in printer - Settings -> Network -> Metrics & Log
 
 - Host => address where prusa_exporter is running aka your computer / server
 - Metrics Port => default 8514 same as prusa_exporter but you can change it

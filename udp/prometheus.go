@@ -16,12 +16,12 @@ var (
 	)
 )
 
-// Init initializes the Prometheus line protocol registry.
-func Init(lineProtocolRegistry *prometheus.Registry) {
-	if lineProtocolRegistry == nil {
-		log.Panic("lineProtocolRegistry cannot be nil")
+// Init initializes the Prometheus udp registry.
+func Init(udpRegistry *prometheus.Registry) {
+	if udpRegistry == nil {
+		log.Panic("UDP Registry cannot be nil")
 	}
 
-	lineProtocolRegistry.MustRegister(up)
+	udpRegistry.MustRegister(up)
 
 }
