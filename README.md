@@ -1,5 +1,4 @@
 [![docker](https://img.shields.io/github/actions/workflow/status/pstrobl96/prusa_exporter/docker.yml)](https://github.com/pstrobl96/prusa_exporter/actions/workflows/docker.yml) 
-[![rpi](https://img.shields.io/github/actions/workflow/status/pstrobl96/prusa_exporter/rpi.yml)](https://github.com/pstrobl96/prusa_exporter/actions/workflows/rpi.yml) 
 ![issues](https://img.shields.io/github/issues/pstrobl96/prusa_exporter) 
 ![go](https://img.shields.io/github/go-mod/go-version/pstrobl96/prusa_exporter) 
 ![tag](https://img.shields.io/github/v/tag/pstrobl96/prusa_exporter) 
