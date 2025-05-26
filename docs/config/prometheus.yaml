@@ -8,7 +8,8 @@ scrape_configs:
       - targets: ["localhost:9090"]
 
   - job_name: "prusalink"
-    scrape_interval: 30s # giving API some time to respond
+    scrape_timeout: 60s
+    scrape_interval: 60s # giving API some time to respond
     metrics_path: "/metrics/prusalink"
     static_configs:
       - targets: ["exporter:10009"]

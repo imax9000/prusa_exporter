@@ -65,7 +65,7 @@ M331 eth_in
 
 ### Dashboard
 
-Pretty basic but nice and cozy [dashboard](docs/Prusa%20Metrics%20MK4_C1-1747124111854.json) for TV.
+Pretty basic but nice and cozy [dashboard](docs/Prusa Metrics MK4_C1.json) for TV.
 
 ![dashboard](docs/dashboard.png)
 
@@ -87,7 +87,7 @@ alpha2
 - [x] update Go to 1.24
 - [x] drop Einsy support
 - [x] overall optimization
-- [ ] update dashboard for Core One / MK4S
+- [x] update dashboard for Core One / MK4S
 
 alpha3
 - [ ] compress image of print
