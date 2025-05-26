@@ -1,5 +1,5 @@
 global:
-  scrape_interval: 1s
+  scrape_interval: 15s
   evaluation_interval: 15s
 
 scrape_configs:
@@ -8,7 +8,7 @@ scrape_configs:
       - targets: ["localhost:9090"]
 
   - job_name: "prusalink"
-    scrape_interval: 10s # giving API some time to respond
+    scrape_interval: 30s # giving API some time to respond
     metrics_path: "/metrics/prusalink"
     static_configs:
       - targets: ["exporter:10009"]

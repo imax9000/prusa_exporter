@@ -46,36 +46,36 @@ func registerMetric(point point) {
 
 	for key, value := range point.Fields {
 		metricName := point.Measurement
+		tagLabels := getLabels(point.Tags)
 
 		if key != "v" && key != "value" {
 			metricName = metricName + "_" + key
 		}
 
-		// Create a new metric with the given point
-		metric = prometheus.NewGaugeVec(
-			prometheus.GaugeOpts{
-				Name: metricName,
-				Help: "Metric for " + metricName + " from " + point.Measurement,
-			},
-			getLabels(point.Tags),
-		)
-
-		// Register the metric with the udp registry
-		if err := udpRegistry.Register(metric); err != nil {
-			log.Trace().Msgf("Metric already registered %s: %v", metricName, err)
-		}
 		registryMetrics.mu.Lock()
 		if existingMetric, exists := registryMetrics.metrics[metricName]; exists {
 			metric = existingMetric
 		} else {
+			// Create a new metric with the given point
+			metric = prometheus.NewGaugeVec(
+				prometheus.GaugeOpts{
+					Name: metricName,
+					Help: "Metric for " + metricName + " from " + point.Measurement,
+				},
+				tagLabels,
+			)
+			if err := udpRegistry.Register(metric); err != nil {
+				log.Trace().Msgf("Metric already registered %s: %v", metricName, err) // not a neccessary and error
+			}
 			registryMetrics.metrics[metricName] = metric
-			registryMetrics.labels[metricName] = getLabels(point.Tags)
+			registryMetrics.labels[metricName] = tagLabels
 		}
 
 		labels := []string{}
 
 		for _, label := range registryMetrics.labels[metricName] {
 			labels = append(labels, point.Tags[label])
+
 		}
 
 		registryMetrics.mu.Unlock()
