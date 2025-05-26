@@ -34,7 +34,7 @@ func process(data format.LogParts, prefix string) {
 	for _, line := range metrics {
 		point, err := parseLineProtocol(line)
 		if err != nil {
-			fmt.Printf("Error parsing '%s': %v\n", line, err)
+			log.Debug().Msgf("Error parsing line '%s': %v", line, err) // printer sends error with several measurements - tmc_read returns "value_too_long" as well as some raw output data
 			continue
 		}
 
