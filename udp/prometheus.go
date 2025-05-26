@@ -17,10 +17,6 @@ var (
 	)
 	udpRegistry *prometheus.Registry
 
-	// registryMetrics = map[string]*prometheus.GaugeVec{
-	// 	"last_push": lastPush,
-	// }
-
 	registryMetrics = safeRegistryMetrics{
 		mu:      sync.Mutex{},
 		metrics: make(map[string]*prometheus.GaugeVec),
@@ -30,6 +26,7 @@ var (
 type safeRegistryMetrics struct {
 	mu      sync.Mutex
 	metrics map[string]*prometheus.GaugeVec
+	labels  map[string][]string
 }
 
 // Init initializes the Prometheus udp registry.
@@ -39,6 +36,7 @@ func Init(udpMainRegistry *prometheus.Registry) {
 	udpRegistry.MustRegister(lastPush)
 	registryMetrics.mu.Lock()
 	registryMetrics.metrics = make(map[string]*prometheus.GaugeVec)
+	registryMetrics.labels = make(map[string][]string)
 	registryMetrics.metrics["last_push"] = lastPush
 	registryMetrics.mu.Unlock()
 }
@@ -47,13 +45,19 @@ func registerMetric(point point) {
 	var metric *prometheus.GaugeVec
 
 	for key, value := range point.Fields {
+		suffix := ""
+
+		if key != "v" && key != "value" {
+			suffix = "_" + key
+		}
+
 		// Create a new metric with the given point
 		metric = prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
-				Name: point.Measurement + "_" + key,
+				Name: point.Measurement + suffix,
 				Help: "Metric for " + point.Measurement,
 			},
-			[]string{"mac", "ip"},
+			getLabels(point.Tags),
 		)
 
 		// Register the metric with the udp registry
@@ -65,11 +69,27 @@ func registerMetric(point point) {
 			metric = existingMetric
 		} else {
 			registryMetrics.metrics[point.Measurement+"_"+key] = metric
+			registryMetrics.labels[point.Measurement+"_"+key] = getLabels(point.Tags)
 		}
+
+		labels := []string{}
+
+		for _, label := range registryMetrics.labels[point.Measurement+"_"+key] {
+			labels = append(labels, point.Tags[label])
+		}
+
 		registryMetrics.mu.Unlock()
-		metric.WithLabelValues(point.Tags["mac"], point.Tags["ip"]).Set(toFloat64(value))
+		metric.WithLabelValues(labels...).Set(toFloat64(value))
 
 	}
+}
+
+func getLabels(tags map[string]string) []string {
+	labels := make([]string, 0, len(tags))
+	for key := range tags {
+		labels = append(labels, key)
+	}
+	return labels
 }
 
 func toFloat64(value interface{}) float64 {
