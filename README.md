@@ -7,9 +7,11 @@
 
 # prusa_exporter
 
-Prusa Exporter or more known as prusa_exporter is a tool that allows users to expose metrics from the Prusa Research 3D printers. Its approach is to scrape metrics from [Prusa Link](https://help.prusa3d.com/article/prusa-connect-and-prusalink-explained_302608) REST API and also from [UDP](https://github.com/prusa3d/Prusa-Firmware-Buddy/blob/master/doc/metrics.md) type of metrics. After gettng data it's simply exposes the metrics at `/metrics` endpoint.
+Prusa Exporter or more known as prusa_exporter is a tool that allows users to expose metrics from the Prusa Research 3D printers. Its approach is to scrape metrics from [Prusa Link](https://help.prusa3d.com/article/prusa-connect-and-prusalink-explained_302608) REST API and also from [UDP](https://github.com/prusa3d/Prusa-Firmware-Buddy/blob/master/doc/metrics.md) type of metrics. After gettng data it's simply exposes the metrics at `/metrics/prusalink` and `/metrics/udp` endpoints. You can also access `http://localhost:10009`.
 
 **UDP** is configured in printer - Settings -> Network -> Metrics & Log
+
+**BEWARE** - Altrough Prusa Mini sends some metrics via UDP as well, it's board does not contain needed sensors. So that means you are basically unable to get anything meaningful from those metrics. 
 
 - Host => address where prusa_exporter is running aka your computer / server
 - Metrics Port => default 8514 same as prusa_exporter but you can change it
@@ -17,7 +19,7 @@ Prusa Exporter or more known as prusa_exporter is a tool that allows users to ex
 - Metrics List => list of enabled metrics
   - You can select all but it has actual impact on performance so choose wisely
 
-List of metrics needed for dashboard
+List of metrics needed for dashboard (values differs between printers)
 - ttemp_noz
 - temp_noz
 - ttemp_bed
@@ -87,11 +89,14 @@ alpha2
 - [ ] update dashboard for Core One / MK4S
 
 alpha3
-- [ ] PoC controlling printer via Grafana
 - [ ] compress image of print
 - [ ] rename udp metrics
 - [ ] check PrusaLink metrics
 - [ ] XL dashboard
+
+alpha4
+- [ ] PoC controlling printer via Grafana
+- [ ] Mini dashboard
 
 beta1
 - [ ] start testing at Raspberry Pi 4 (if not feasible then 5)
