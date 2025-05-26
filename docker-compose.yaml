@@ -38,7 +38,7 @@ services:
     command: 
       - "--config.file=/app/prusa.yml"
       - "--log.level=info"
-      - "--prusalink.scrape-timeout=10"
+      - "--prusalink.scrape-timeout=5"
     depends_on:
       - prometheus
     networks:
