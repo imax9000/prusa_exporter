@@ -1,6 +1,8 @@
 package udp
 
 import (
+	"sync"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog/log"
 )
@@ -15,17 +17,30 @@ var (
 	)
 	udpRegistry *prometheus.Registry
 
-	registryMetrics = map[string]*prometheus.GaugeVec{
-		"last_push": lastPush,
+	// registryMetrics = map[string]*prometheus.GaugeVec{
+	// 	"last_push": lastPush,
+	// }
+
+	registryMetrics = safeRegistryMetrics{
+		mu:      sync.Mutex{},
+		metrics: make(map[string]*prometheus.GaugeVec),
 	}
 )
+
+type safeRegistryMetrics struct {
+	mu      sync.Mutex
+	metrics map[string]*prometheus.GaugeVec
+}
 
 // Init initializes the Prometheus udp registry.
 func Init(udpMainRegistry *prometheus.Registry) {
 	udpRegistry = udpMainRegistry
 
 	udpRegistry.MustRegister(lastPush)
-
+	registryMetrics.mu.Lock()
+	registryMetrics.metrics = make(map[string]*prometheus.GaugeVec)
+	registryMetrics.metrics["last_push"] = lastPush
+	registryMetrics.mu.Unlock()
 }
 
 func registerMetric(point point) {
@@ -45,11 +60,13 @@ func registerMetric(point point) {
 		if err := udpRegistry.Register(metric); err != nil {
 			log.Trace().Msgf("Metric already registered %s: %v", point.Measurement+"_"+key, err)
 		}
-		if existingMetric, exists := registryMetrics[point.Measurement+"_"+key]; exists {
+		registryMetrics.mu.Lock()
+		if existingMetric, exists := registryMetrics.metrics[point.Measurement+"_"+key]; exists {
 			metric = existingMetric
 		} else {
-			registryMetrics[point.Measurement+"_"+key] = metric
+			registryMetrics.metrics[point.Measurement+"_"+key] = metric
 		}
+		registryMetrics.mu.Unlock()
 		metric.WithLabelValues(point.Tags["mac"], point.Tags["ip"]).Set(toFloat64(value))
 
 	}
