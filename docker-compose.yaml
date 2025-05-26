@@ -7,7 +7,7 @@ volumes:
 
 services:
   grafana:
-    image: grafana/grafana:12.0.0
+    image: grafana/grafana:12.0.1
     container_name: grafana
     restart: unless-stopped
     environment:
@@ -37,34 +37,19 @@ services:
       - 8514:8514/udp
     command: 
       - "--config.file=/app/prusa.yml"
-      - "--lineprotocol.export=http://influxdb_exporter:9122"
       - "--log.level=info"
-    depends_on:
-      - influxdb_exporter
-    networks:
-      - pubel
-
-  influxdb_exporter:
-    image: prom/influxdb-exporter:v0.12.0
-    container_name: influxdb_exporter
-    restart: unless-stopped
-    command:
-      - '--timestamps'
-    ports:
-      - 9122:9122
     depends_on:
       - prometheus
     networks:
       - pubel
-  
+ 
   prometheus:
-    image: prom/prometheus:v3.3.1
+    image: prom/prometheus:v3.4.0
     container_name: prometheus
     restart: always
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
-      - '--web.enable-remote-write-receiver'
     volumes:
       - ./docs/config/prometheus.yaml:/etc/prometheus/prometheus.yml
       - prometheus_data:/prometheus
