@@ -74,38 +74,37 @@ omega2
 - [x] development restarted 🎉
 
 alpha1
-
 - [x] transfering prusa_metrics_handler codebase into prusa_exporter
 - [x] working UDP metrics via influxdb_exporter
 - [x] Core One / MK4S dashboard
 
-alpha2 
+alpha2
 - [x] working UDP metrics without any external tool
 - [x] split UDP and PrusaLink metrics
 - [x] update Go to 1.24
 - [x] drop Einsy support
 - [x] overall optimization
-- [] update dashboard for Core One / MK4S
+- [ ] update dashboard for Core One / MK4S
 
 alpha3
-- [] PoC controlling printer via Grafana
-- [] compress image of print
-- [] rename udp metrics
-- [] check PrusaLink metrics
-- [] XL dashboard
+- [ ] PoC controlling printer via Grafana
+- [ ] compress image of print
+- [ ] rename udp metrics
+- [ ] check PrusaLink metrics
+- [ ] XL dashboard
 
 beta1
-- [] start testing at Raspberry Pi 4 (if not feasible then 5)
-- [] create tests
-- [] reenable tests in pipeline
+- [ ] start testing at Raspberry Pi 4 (if not feasible then 5)
+- [ ] create tests
+- [ ] reenable tests in pipeline
 
 beta2
-- [] improve stability and optimize code
-- [] finalize controlling printer via Grafana
+- [ ] improve stability and optimize code
+- [ ] finalize controlling printer via Grafana
 
 rc1
-- [] create overview dashboard for all printers in system
-- [] further testing
+- [ ] create overview dashboard for all printers in system
+- [ ] further testing
 
 final
-- [] 🎉
+- [ ] 🎉
