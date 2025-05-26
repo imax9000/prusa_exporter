@@ -45,36 +45,36 @@ func registerMetric(point point) {
 	var metric *prometheus.GaugeVec
 
 	for key, value := range point.Fields {
-		suffix := ""
+		metricName := point.Measurement
 
 		if key != "v" && key != "value" {
-			suffix = "_" + key
+			metricName = metricName + "_" + key
 		}
 
 		// Create a new metric with the given point
 		metric = prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
-				Name: point.Measurement + suffix,
-				Help: "Metric for " + point.Measurement,
+				Name: metricName,
+				Help: "Metric for " + metricName + " from " + point.Measurement,
 			},
 			getLabels(point.Tags),
 		)
 
 		// Register the metric with the udp registry
 		if err := udpRegistry.Register(metric); err != nil {
-			log.Trace().Msgf("Metric already registered %s: %v", point.Measurement+"_"+key, err)
+			log.Trace().Msgf("Metric already registered %s: %v", metricName, err)
 		}
 		registryMetrics.mu.Lock()
-		if existingMetric, exists := registryMetrics.metrics[point.Measurement+"_"+key]; exists {
+		if existingMetric, exists := registryMetrics.metrics[metricName]; exists {
 			metric = existingMetric
 		} else {
-			registryMetrics.metrics[point.Measurement+"_"+key] = metric
-			registryMetrics.labels[point.Measurement+"_"+key] = getLabels(point.Tags)
+			registryMetrics.metrics[metricName] = metric
+			registryMetrics.labels[metricName] = getLabels(point.Tags)
 		}
 
 		labels := []string{}
 
-		for _, label := range registryMetrics.labels[point.Measurement+"_"+key] {
+		for _, label := range registryMetrics.labels[metricName] {
 			labels = append(labels, point.Tags[label])
 		}
 
@@ -111,28 +111,28 @@ func toFloat64(value interface{}) float64 {
 	case string:
 		if v == "PLA" {
 			return 1.0
-		} else if v == "ABS" {
-			return 2.0
 		} else if v == "PETG" {
-			return 3.0
+			return 2.0
 		} else if v == "ASA" {
-			return 4.0
-		} else if v == "TPU" {
-			return 5.0
+			return 3.0
 		} else if v == "PC" {
+			return 4.0
+		} else if v == "PVB" {
+			return 5.0
+		} else if v == "ABS" {
 			return 6.0
-		} else if v == "NYLON" {
-			return 7.0
-		} else if v == "PVA" {
-			return 8.0
 		} else if v == "HIPS" {
-			return 9.0
+			return 7.0
 		} else if v == "PP" {
+			return 8.0
+		} else if v == "FLEX" {
+			return 9.0
+		} else if v == "PA" {
 			return 10.0
-		} else if v == "POM" {
-			return 11.0
+		} else if v == "---" {
+			return -1.0 // special case for "---" to indicate no loaded filament
 		} else {
-			return 0.0
+			return 0.0 // return for custom
 		}
 	default:
 		log.Warn().Msgf("Unsupported type %T for value %v", value, value)
