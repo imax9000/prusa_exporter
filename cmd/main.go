@@ -9,35 +9,43 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/pstrobl96/prusa_exporter/config"
-	"github.com/pstrobl96/prusa_exporter/lineprotocol"
 	prusalink "github.com/pstrobl96/prusa_exporter/prusalink/buddy"
+	udp "github.com/pstrobl96/prusa_exporter/udp"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
 var (
-	configFile                = kingpin.Flag("config.file", "Configuration file for prusa_exporter.").Default("./prusa.yml").ExistingFile()
-	metricsPath               = kingpin.Flag("exporter.metrics-path", "Path where to expose metrics.").Default("/metrics").String()
-	metricsPort               = kingpin.Flag("exporter.metrics-port", "Port where to expose metrics.").Default("10009").Int()
-	prusaLinkScrapeTimeout    = kingpin.Flag("prusalink.scrape-timeout", "Timeout in seconds to scrape prusalink metrics.").Default("10").Int()
-	logLevel                  = kingpin.Flag("log.level", "Log level for zerolog.").Default("info").String()
-	syslogListenAddress       = kingpin.Flag("listen-address", "Address where to expose port for gathering metrics. - format <address>:<port>").Default("0.0.0.0:8514").String()
-	lineprotocolPrefix        = kingpin.Flag("prefix", "Prefix for lineprotocol metrics").Default("prusa_").String()
-	lineprotocolExportAddress = kingpin.Flag("lineprotocol.export", "Export lineprotocol metrics to InfluxDB Proxy.").String()
+	configFile             = kingpin.Flag("config.file", "Configuration file for prusa_exporter.").Default("./prusa.yml").ExistingFile()
+	metricsPath            = kingpin.Flag("exporter.metrics-path", "Path where to expose Prusa Link metrics.").Default("/metrics/prusalink").String()
+	udpMetricsPath         = kingpin.Flag("exporter.udp-metrics-path", "Path where to expose udp metrics.").Default("/metrics/udp").String()
+	metricsPort            = kingpin.Flag("exporter.metrics-port", "Port where to expose metrics.").Default("10009").Int()
+	prusaLinkScrapeTimeout = kingpin.Flag("prusalink.scrape-timeout", "Timeout in seconds to scrape prusalink metrics.").Default("10").Int()
+	logLevel               = kingpin.Flag("log.level", "Log level for zerolog.").Default("info").String()
+	syslogListenAddress    = kingpin.Flag("listen-address", "Address where to expose port for gathering metrics. - format <address>:<port>").Default("0.0.0.0:8514").String()
+	udpPrefix              = kingpin.Flag("prefix", "Prefix for udp metrics").Default("prusa_").String()
+	udpRegistry            = prometheus.NewRegistry()
 )
 
 // Run function to start the exporter
 func Run() {
-	zerolog.TimeFieldFormat = zerolog.TimeFormatUnixNano
-
 	kingpin.Parse()
 	log.Info().Msg("Prusa exporter starting")
+
+	if *udpMetricsPath == *metricsPath {
+		log.Panic().Msg("udp_metrics_path must be different from metrics_path")
+	}
+
+	if _, err := os.Stat(*configFile); os.IsNotExist(err) {
+		log.Panic().Msg("Configuration file does not exist: " + *configFile)
+	}
+
 	log.Info().Msg("Loading configuration file: " + *configFile)
 
 	config, err := config.LoadConfig(*configFile, *prusaLinkScrapeTimeout)
+
 	if err != nil {
-		log.Error().Msg("Error loading configuration file " + err.Error())
-		os.Exit(1)
+		log.Panic().Msg("Error loading configuration file " + err.Error())
 	}
 
 	logLevel, err := zerolog.ParseLevel(*logLevel)
@@ -52,23 +60,36 @@ func Run() {
 	log.Info().Msg("PrusaLink metrics enabled!")
 	collectors = append(collectors, prusalink.NewCollector(config))
 
+	// starting syslog server
+
+	log.Info().Msg("Syslog server starting at: " + *syslogListenAddress)
+	go udp.MetricsListener(*syslogListenAddress, *udpPrefix)
+	log.Info().Msg("Syslog server ready to receive metrics")
+
+	// registering the prometheus metrics
+
 	prometheus.MustRegister(collectors...)
 	log.Info().Msg("Metrics registered")
 	http.Handle(*metricsPath, promhttp.Handler())
-	log.Info().Msg("Listening at port: " + strconv.Itoa(*metricsPort))
+	log.Info().Msg("PrusaLink metrics initialized")
 
-	log.Info().Msg("Syslog logs server starting at: " + *syslogListenAddress)
-	lineprotocol.InitInfluxClient(*lineprotocolExportAddress)
-	go lineprotocol.MetricsListener(*syslogListenAddress, *lineprotocolPrefix)
-	log.Info().Msg("Syslog server started")
+	udp.Init(udpRegistry)
+
+	http.Handle(*udpMetricsPath, promhttp.HandlerFor(udpRegistry, promhttp.HandlerOpts{
+		Registry: udpRegistry,
+	}))
+	log.Info().Msg("UDP metrics initialized")
+
+	log.Info().Msg("Listening at port: " + strconv.Itoa(*metricsPort))
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`<html>
-    <head><title>prusa_exporter</title></head>
+    <head><title>prusa_exporter 2.0.0-alpha2</title></head>
     <body>
     <h1>prusa_exporter</h1>
 	<p>Syslog server running at - <b>` + *syslogListenAddress + `</b></p>
-    <p><a href="` + *metricsPath + `">Metrics</a></p>
+    <p><a href="` + *metricsPath + `">PrusaLink metrics</a></p>
+	<p><a href="` + *udpMetricsPath + `">UDP Metrics</a></p>
 	</body>
     </html>`))
 	})

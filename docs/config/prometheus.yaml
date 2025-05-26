@@ -1,5 +1,5 @@
 global:
-  scrape_interval: 1s
+  scrape_interval: 15s
   evaluation_interval: 15s
 
 scrape_configs:
@@ -7,13 +7,18 @@ scrape_configs:
     static_configs:
       - targets: ["localhost:9090"]
 
-  - job_name: "exporter"
+  - job_name: "prusalink"
+    scrape_timeout: 60s
+    scrape_interval: 60s # giving API some time to respond
+    metrics_path: "/metrics/prusalink"
     static_configs:
       - targets: ["exporter:10009"]
 
-  - job_name: "influxdb_exporter"
+  - job_name: "udp"
+    scrape_interval: 1s
+    metrics_path: "/metrics/udp"
     static_configs:
-      - targets: ["influxdb_exporter:9122"]
+      - targets: ["exporter:10009"]
 
 storage:
   tsdb:

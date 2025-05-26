@@ -1,5 +1,4 @@
 [![docker](https://img.shields.io/github/actions/workflow/status/pstrobl96/prusa_exporter/docker.yml)](https://github.com/pstrobl96/prusa_exporter/actions/workflows/docker.yml) 
-[![rpi](https://img.shields.io/github/actions/workflow/status/pstrobl96/prusa_exporter/rpi.yml)](https://github.com/pstrobl96/prusa_exporter/actions/workflows/rpi.yml) 
 ![issues](https://img.shields.io/github/issues/pstrobl96/prusa_exporter) 
 ![go](https://img.shields.io/github/go-mod/go-version/pstrobl96/prusa_exporter) 
 ![tag](https://img.shields.io/github/v/tag/pstrobl96/prusa_exporter) 
@@ -7,17 +6,21 @@
 
 # prusa_exporter
 
-Prusa Exporter or more known as prusa_exporter is a tool that allows users to expose metrics from the Prusa Research 3D printers. Its approach is to scrape metrics from [Prusa Link](https://help.prusa3d.com/article/prusa-connect-and-prusalink-explained_302608) REST API and also from [line_protocol](https://github.com/prusa3d/Prusa-Firmware-Buddy/blob/master/doc/metrics.md) type of metrics. After gettng data it's simply exposes the metrics at `/metrics` endpoint.
+Prusa Exporter or more known as prusa_exporter is a tool that allows users to expose metrics from the Prusa Research 3D printers. Its approach is to scrape metrics from [Prusa Link](https://help.prusa3d.com/article/prusa-connect-and-prusalink-explained_302608) REST API and also from [UDP](https://github.com/prusa3d/Prusa-Firmware-Buddy/blob/master/doc/metrics.md) type of metrics. After gettng data it's simply exposes the metrics at `/metrics/prusalink` and `/metrics/udp` endpoints. You can also access `http://localhost:10009`.
 
-**line_protocol** is configured in printer - Settings -> Network -> Metrics & Log
+**I strongly recommend to connect printers via Ethernet as WiFi is not considered stable**
 
-- Host => address where prusa_metrics_handler is running
-- Metrics Port => default 8514 same as prusa_metrics_handler but you can change it
+**UDP** is configured in printer - Settings -> Network -> Metrics & Log
+
+**BEWARE** - Altrough Prusa Mini sends some metrics via UDP as well, it's board does not contain needed sensors. So that means you are basically unable to get anything meaningful from those metrics. 
+
+- Host => address where prusa_exporter is running aka your computer / server
+- Metrics Port => default 8514 same as prusa_exporter but you can change it
 - Enable Metrics => enable
 - Metrics List => list of enabled metrics
   - You can select all but it has actual impact on performance so choose wisely
 
-List of metrics needed for dashboard
+List of metrics needed for dashboard (values differs between printers)
 - ttemp_noz
 - temp_noz
 - ttemp_bed
@@ -62,7 +65,52 @@ M331 eth_in
 
 ### Dashboard
 
-Pretty basic but nice and cozy [dashboard](docs/Prusa%20Metrics%20MK4_C1-1747124111854.json) for TV.
+Pretty basic but nice and cozy [dashboard](docs/Prusa_Metrics_MK4_C1.json) for TV.
 
 ![dashboard](docs/dashboard.png)
 
+# Roadmap
+
+omega2
+- [x] working udp metrics with influx2cortex proxy
+- [x] working PrusaLink metrics
+- [x] development restarted 🎉
+
+alpha1
+- [x] transfering prusa_metrics_handler codebase into prusa_exporter
+- [x] working UDP metrics via influxdb_exporter
+- [x] Core One / MK4S dashboard
+
+alpha2
+- [x] working UDP metrics without any external tool
+- [x] split UDP and PrusaLink metrics
+- [x] update Go to 1.24
+- [x] drop Einsy support
+- [x] overall optimization
+- [x] update dashboard for Core One / MK4S
+
+alpha3
+- [ ] compress image of print
+- [ ] rename udp metrics
+- [ ] check PrusaLink metrics
+- [ ] XL dashboard
+
+alpha4
+- [ ] PoC controlling printer via Grafana
+- [ ] Mini dashboard
+
+beta1
+- [ ] start testing at Raspberry Pi 4 (if not feasible then 5)
+- [ ] create tests
+- [ ] reenable tests in pipeline
+
+beta2
+- [ ] improve stability and optimize code
+- [ ] finalize controlling printer via Grafana
+
+rc1
+- [ ] create overview dashboard for all printers in system
+- [ ] further testing
+
+final
+- [ ] 🎉
