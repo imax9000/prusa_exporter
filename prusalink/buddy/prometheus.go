@@ -38,6 +38,7 @@ const (
 	MetricPrinterFanSpeedRpm                   = "prusa_fan_speed_rpm"
 	MetricPrinterPrintSpeedRatio               = "prusa_print_speed_ratio"
 	MetricPrinterJobImage                      = "prusa_job_image"
+	MetricPrinterCurrentJob                    = "prusa_job"
 )
 
 type metricDesc struct {
@@ -68,6 +69,8 @@ var metrics = []metricDesc{
 // Unlike `metrics`, these ignore common labels.
 var specialMetrics = []metricDesc{
 	{MetricPrinterUp, "Return information about online printers. If printer is registered as offline then returned value is 0.", []string{"printer_address", "printer_model", "printer_name"}},
+
+	{MetricPrinterCurrentJob, "Returns information about the current print job.", []string{"printer_address", "printer_model", "printer_name", "printer_job_name", "printer_job_path"}},
 }
 
 func (c *Collector) metricEnabled(m MetricName) bool {
@@ -163,6 +166,18 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 					c.GetLabels(s, job, version.API, version.Server, version.Text, info.Name, info.Location, info.Serial, info.Hostname)...)
 
 				ch <- printerInfo
+			}
+
+			if c.metricEnabled(MetricPrinterCurrentJob) {
+				value := float64(1)
+				if job.Job.File.Name == "" {
+					value = 0
+				}
+				jobInfo := prometheus.MustNewConstMetric(c.metricDesc[MetricPrinterCurrentJob], prometheus.GaugeValue,
+					value,
+					s.Address, s.Type, s.Name, job.Job.File.Name, job.Job.File.Path)
+
+				ch <- jobInfo
 			}
 
 			if c.metricEnabled(MetricPrinterFanSpeedRpm) {
