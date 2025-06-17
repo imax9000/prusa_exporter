@@ -14,7 +14,10 @@ type Config struct {
 
 		LogLevel string `yaml:"log_level"`
 	} `yaml:"exporter"`
-	Printers []Printers `yaml:"printers"`
+	Printers  []Printers `yaml:"printers"`
+	PrusaLink struct {
+		CommonLabels []string `yaml:"common_labels"`
+	} `yaml:"prusalink"`
 }
 
 // Printers struct containing the printer configuration
