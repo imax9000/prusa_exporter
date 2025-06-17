@@ -11,7 +11,8 @@ import (
 
 // Collector is a struct of all printer metrics
 type Collector struct {
-	metricDesc map[MetricName]*prometheus.Desc
+	metricDesc     map[MetricName]*prometheus.Desc
+	metricDisabled map[MetricName]bool
 
 	configuration config.Config
 	commonLabels  []string
@@ -69,6 +70,11 @@ var specialMetrics = []metricDesc{
 	{MetricPrinterUp, "Return information about online printers. If printer is registered as offline then returned value is 0.", []string{"printer_address", "printer_model", "printer_name"}},
 }
 
+func (c *Collector) metricEnabled(m MetricName) bool {
+	// Zero value is `false`, so if not set - the metric is enabled.
+	return !c.metricDisabled[m]
+}
+
 // NewCollector returns a new Collector for printer metrics
 func NewCollector(config config.Config) *Collector {
 	configuration = config
@@ -77,9 +83,10 @@ func NewCollector(config config.Config) *Collector {
 		commonLabels = []string{"printer_address", "printer_model", "printer_name", "printer_job_name", "printer_job_path"}
 	}
 	c := &Collector{
-		configuration: config,
-		commonLabels:  commonLabels,
-		metricDesc:    map[MetricName]*prometheus.Desc{},
+		configuration:  config,
+		commonLabels:   commonLabels,
+		metricDesc:     map[MetricName]*prometheus.Desc{},
+		metricDisabled: map[MetricName]bool{},
 	}
 
 	for _, m := range metrics {
@@ -87,6 +94,10 @@ func NewCollector(config config.Config) *Collector {
 	}
 	for _, m := range specialMetrics {
 		c.metricDesc[m.Name] = prometheus.NewDesc(string(m.Name), m.Description, m.Labels, nil)
+	}
+
+	for _, m := range config.PrusaLink.DisableMetrics {
+		c.metricDisabled[MetricName(m)] = true
 	}
 	return c
 }
@@ -145,121 +156,149 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 				log.Error().Msg("Error while scraping info endpoint at " + s.Address + " - " + err.Error())
 			}
 
-			printerInfo := prometheus.MustNewConstMetric(
-				c.metricDesc[MetricPrinterInfo], prometheus.GaugeValue,
-				1,
-				c.GetLabels(s, job, version.API, version.Server, version.Text, info.Name, info.Location, info.Serial, info.Hostname)...)
+			if c.metricEnabled(MetricPrinterInfo) {
+				printerInfo := prometheus.MustNewConstMetric(
+					c.metricDesc[MetricPrinterInfo], prometheus.GaugeValue,
+					1,
+					c.GetLabels(s, job, version.API, version.Server, version.Text, info.Name, info.Location, info.Serial, info.Hostname)...)
 
-			ch <- printerInfo
+				ch <- printerInfo
+			}
 
-			printerFanHotend := prometheus.MustNewConstMetric(c.metricDesc[MetricPrinterFanSpeedRpm], prometheus.GaugeValue,
-				status.Printer.FanHotend, c.GetLabels(s, job, "hotend")...)
+			if c.metricEnabled(MetricPrinterFanSpeedRpm) {
+				printerFanHotend := prometheus.MustNewConstMetric(c.metricDesc[MetricPrinterFanSpeedRpm], prometheus.GaugeValue,
+					status.Printer.FanHotend, c.GetLabels(s, job, "hotend")...)
 
-			ch <- printerFanHotend
+				ch <- printerFanHotend
 
-			printerFanPrint := prometheus.MustNewConstMetric(c.metricDesc[MetricPrinterFanSpeedRpm], prometheus.GaugeValue,
-				status.Printer.FanPrint, c.GetLabels(s, job, "print")...)
+				printerFanPrint := prometheus.MustNewConstMetric(c.metricDesc[MetricPrinterFanSpeedRpm], prometheus.GaugeValue,
+					status.Printer.FanPrint, c.GetLabels(s, job, "print")...)
 
-			ch <- printerFanPrint
+				ch <- printerFanPrint
+			}
 
-			printerNozzleSize := prometheus.MustNewConstMetric(c.metricDesc[MetricPrinterNozzleSize], prometheus.GaugeValue,
-				info.NozzleDiameter, c.GetLabels(s, job)...)
+			if c.metricEnabled(MetricPrinterNozzleSize) {
+				printerNozzleSize := prometheus.MustNewConstMetric(c.metricDesc[MetricPrinterNozzleSize], prometheus.GaugeValue,
+					info.NozzleDiameter, c.GetLabels(s, job)...)
 
-			ch <- printerNozzleSize
+				ch <- printerNozzleSize
+			}
 
-			printSpeed := prometheus.MustNewConstMetric(
-				c.metricDesc[MetricPrinterPrintSpeedRatio], prometheus.GaugeValue,
-				printer.Telemetry.PrintSpeed/100,
-				c.GetLabels(s, job)...)
+			if c.metricEnabled(MetricPrinterPrintSpeedRatio) {
+				printSpeed := prometheus.MustNewConstMetric(
+					c.metricDesc[MetricPrinterPrintSpeedRatio], prometheus.GaugeValue,
+					printer.Telemetry.PrintSpeed/100,
+					c.GetLabels(s, job)...)
 
-			ch <- printSpeed
+				ch <- printSpeed
+			}
 
-			printTime := prometheus.MustNewConstMetric(
-				c.metricDesc[MetricPrinterPrintTime], prometheus.GaugeValue,
-				job.Progress.PrintTime,
-				c.GetLabels(s, job)...)
+			if c.metricEnabled(MetricPrinterPrintTime) {
+				printTime := prometheus.MustNewConstMetric(
+					c.metricDesc[MetricPrinterPrintTime], prometheus.GaugeValue,
+					job.Progress.PrintTime,
+					c.GetLabels(s, job)...)
 
-			ch <- printTime
+				ch <- printTime
+			}
 
-			printTimeRemaining := prometheus.MustNewConstMetric(
-				c.metricDesc[MetricPrinterPrintTimeRemaining], prometheus.GaugeValue,
-				job.Progress.PrintTimeLeft,
-				c.GetLabels(s, job)...)
+			if c.metricEnabled(MetricPrinterPrintTimeRemaining) {
+				printTimeRemaining := prometheus.MustNewConstMetric(
+					c.metricDesc[MetricPrinterPrintTimeRemaining], prometheus.GaugeValue,
+					job.Progress.PrintTimeLeft,
+					c.GetLabels(s, job)...)
 
-			ch <- printTimeRemaining
+				ch <- printTimeRemaining
+			}
 
-			printProgress := prometheus.MustNewConstMetric(
-				c.metricDesc[MetricPrinterPrintProgressRatio], prometheus.GaugeValue,
-				job.Progress.Completion,
-				c.GetLabels(s, job)...)
+			if c.metricEnabled(MetricPrinterPrintProgressRatio) {
+				printProgress := prometheus.MustNewConstMetric(
+					c.metricDesc[MetricPrinterPrintProgressRatio], prometheus.GaugeValue,
+					job.Progress.Completion,
+					c.GetLabels(s, job)...)
 
-			ch <- printProgress
+				ch <- printProgress
+			}
 
-			material := prometheus.MustNewConstMetric(
-				c.metricDesc[MetricPrinterMaterial], prometheus.GaugeValue,
-				BoolToFloat(!(strings.Contains(printer.Telemetry.Material, "-"))),
-				c.GetLabels(s, job, printer.Telemetry.Material)...)
+			if c.metricEnabled(MetricPrinterMaterial) {
+				material := prometheus.MustNewConstMetric(
+					c.metricDesc[MetricPrinterMaterial], prometheus.GaugeValue,
+					BoolToFloat(!(strings.Contains(printer.Telemetry.Material, "-"))),
+					c.GetLabels(s, job, printer.Telemetry.Material)...)
 
-			ch <- material
+				ch <- material
+			}
 
-			printerAxisX := prometheus.MustNewConstMetric(
-				c.metricDesc[MetricPrinterAxis], prometheus.GaugeValue,
-				printer.Telemetry.AxisX,
-				c.GetLabels(s, job, "x")...)
+			if c.metricEnabled(MetricPrinterAxis) {
+				printerAxisX := prometheus.MustNewConstMetric(
+					c.metricDesc[MetricPrinterAxis], prometheus.GaugeValue,
+					printer.Telemetry.AxisX,
+					c.GetLabels(s, job, "x")...)
 
-			ch <- printerAxisX
+				ch <- printerAxisX
 
-			printerAxisY := prometheus.MustNewConstMetric(
-				c.metricDesc[MetricPrinterAxis], prometheus.GaugeValue,
-				printer.Telemetry.AxisY,
-				c.GetLabels(s, job, "y")...)
+				printerAxisY := prometheus.MustNewConstMetric(
+					c.metricDesc[MetricPrinterAxis], prometheus.GaugeValue,
+					printer.Telemetry.AxisY,
+					c.GetLabels(s, job, "y")...)
 
-			ch <- printerAxisY
+				ch <- printerAxisY
 
-			printerAxisZ := prometheus.MustNewConstMetric(
-				c.metricDesc[MetricPrinterAxis], prometheus.GaugeValue,
-				printer.Telemetry.AxisZ,
-				c.GetLabels(s, job, "z")...)
+				printerAxisZ := prometheus.MustNewConstMetric(
+					c.metricDesc[MetricPrinterAxis], prometheus.GaugeValue,
+					printer.Telemetry.AxisZ,
+					c.GetLabels(s, job, "z")...)
 
-			ch <- printerAxisZ
+				ch <- printerAxisZ
+			}
 
-			printerFlow := prometheus.MustNewConstMetric(c.metricDesc[MetricPrinterFlow], prometheus.GaugeValue,
-				status.Printer.Flow/100, c.GetLabels(s, job)...)
+			if c.metricEnabled(MetricPrinterFlow) {
+				printerFlow := prometheus.MustNewConstMetric(c.metricDesc[MetricPrinterFlow], prometheus.GaugeValue,
+					status.Printer.Flow/100, c.GetLabels(s, job)...)
 
-			ch <- printerFlow
+				ch <- printerFlow
+			}
 
-			printerMMU := prometheus.MustNewConstMetric(c.metricDesc[MetricPrinterMMU], prometheus.GaugeValue,
-				BoolToFloat(info.Mmu), c.GetLabels(s, job)...)
-			ch <- printerMMU
+			if c.metricEnabled(MetricPrinterMMU) {
+				printerMMU := prometheus.MustNewConstMetric(c.metricDesc[MetricPrinterMMU], prometheus.GaugeValue,
+					BoolToFloat(info.Mmu), c.GetLabels(s, job)...)
+				ch <- printerMMU
+			}
 
-			printerBedTemp := prometheus.MustNewConstMetric(c.metricDesc[MetricPrinterTemp], prometheus.GaugeValue,
-				printer.Temperature.Bed.Actual, c.GetLabels(s, job, "bed")...)
+			if c.metricEnabled(MetricPrinterTemp) {
+				printerBedTemp := prometheus.MustNewConstMetric(c.metricDesc[MetricPrinterTemp], prometheus.GaugeValue,
+					printer.Temperature.Bed.Actual, c.GetLabels(s, job, "bed")...)
 
-			ch <- printerBedTemp
+				ch <- printerBedTemp
 
-			printerBedTempTarget := prometheus.MustNewConstMetric(c.metricDesc[MetricPrinterTempTarget], prometheus.GaugeValue,
-				printer.Temperature.Bed.Target, c.GetLabels(s, job, "bed")...)
+				printerToolTemp := prometheus.MustNewConstMetric(c.metricDesc[MetricPrinterTemp], prometheus.GaugeValue,
+					printer.Temperature.Tool0.Actual, c.GetLabels(s, job, "tool0")...)
 
-			ch <- printerBedTempTarget
+				ch <- printerToolTemp
+			}
 
-			printerToolTempTarget := prometheus.MustNewConstMetric(c.metricDesc[MetricPrinterTempTarget], prometheus.GaugeValue,
-				printer.Temperature.Tool0.Target, c.GetLabels(s, job, "tool0")...)
+			if c.metricEnabled(MetricPrinterTempTarget) {
+				printerBedTempTarget := prometheus.MustNewConstMetric(c.metricDesc[MetricPrinterTempTarget], prometheus.GaugeValue,
+					printer.Temperature.Bed.Target, c.GetLabels(s, job, "bed")...)
 
-			ch <- printerToolTempTarget
+				ch <- printerBedTempTarget
 
-			printerToolTemp := prometheus.MustNewConstMetric(c.metricDesc[MetricPrinterTemp], prometheus.GaugeValue,
-				printer.Temperature.Tool0.Actual, c.GetLabels(s, job, "tool0")...)
+				printerToolTempTarget := prometheus.MustNewConstMetric(c.metricDesc[MetricPrinterTempTarget], prometheus.GaugeValue,
+					printer.Temperature.Tool0.Target, c.GetLabels(s, job, "tool0")...)
 
-			ch <- printerToolTemp
+				ch <- printerToolTempTarget
+			}
 
-			printerStatus := prometheus.MustNewConstMetric(
-				c.metricDesc[MetricPrinterStatus], prometheus.GaugeValue,
-				getStateFlag(printer),
-				c.GetLabels(s, job, printer.State.Text)...)
+			if c.metricEnabled(MetricPrinterStatus) {
+				printerStatus := prometheus.MustNewConstMetric(
+					c.metricDesc[MetricPrinterStatus], prometheus.GaugeValue,
+					getStateFlag(printer),
+					c.GetLabels(s, job, printer.State.Text)...)
 
-			ch <- printerStatus
+				ch <- printerStatus
+			}
 
-			if getStateFlag(printer) == 4 {
+			if c.metricEnabled(MetricPrinterJobImage) && getStateFlag(printer) == 4 {
 				image, err := GetJobImage(s, job.Job.File.Path)
 
 				if err != nil {

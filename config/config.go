@@ -16,7 +16,8 @@ type Config struct {
 	} `yaml:"exporter"`
 	Printers  []Printers `yaml:"printers"`
 	PrusaLink struct {
-		CommonLabels []string `yaml:"common_labels"`
+		CommonLabels   []string `yaml:"common_labels"`
+		DisableMetrics []string `yaml:"disable_metrics"`
 	} `yaml:"prusalink"`
 }
 
