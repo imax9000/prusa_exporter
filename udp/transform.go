@@ -113,7 +113,7 @@ func newPoint() *point {
 func parseLineProtocol(line string) (*point, error) {
 	p := newPoint()
 
-	parts := strings.Split(line, " ")
+	parts := splitLine(line)
 	if len(parts) < 2 || len(parts) > 3 {
 		return nil, fmt.Errorf("invalid udp format: %s", line) // this happens when printer sends error message
 	}
@@ -170,4 +170,50 @@ func parseLineProtocol(line string) (*point, error) {
 	}
 
 	return p, nil
+}
+
+func splitLine(s string) []string {
+	r := []string{}
+
+	// Run a simple finite state machine to handle quoted strings and escaped characters.
+	type State int
+	const (
+		Normal = iota
+		QuotedString
+	)
+
+	start := 0
+	state := Normal
+	for i := 0; i < len(s); i++ {
+		switch state {
+		case Normal:
+			switch s[i] {
+			case ' ':
+				if start < i {
+					r = append(r, s[start:i])
+				}
+				start = i + 1
+
+			case '\\':
+				i++ // just skip the next character
+
+			case '"':
+				state = QuotedString
+			}
+
+		case QuotedString:
+			switch s[i] {
+			case '\\':
+				i++ // just skip the next character
+
+			case '"':
+				state = Normal
+			}
+		}
+	}
+	if start < len(s) {
+		r = append(r, s[start:])
+	}
+
+	return r
 }
